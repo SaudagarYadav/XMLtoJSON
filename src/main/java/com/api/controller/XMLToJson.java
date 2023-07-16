@@ -23,30 +23,29 @@ import com.fasterxml.jackson.module.jsonSchema.JsonSchemaGenerator;
 import com.sun.codemodel.JCodeModel;
 
 @RestController
-public class TestController {
+public class XMLToJson {
 
-	@GetMapping("/test")
+	private ObjectMapper objectMapper = new ObjectMapper();
+
+	@GetMapping("/jsonschema")
 	public String jsonS() throws IOException {
 		
-		String json = "{\"sectors\": [{\"times\":[{\"intensity\":30," +
-                "\"start\":{\"hour\":8,\"minute\":30},\"end\":{\"hour\":17,\"minute\":0}}," +
-                "{\"intensity\":10,\"start\":{\"hour\":17,\"minute\":5},\"end\":{\"hour\":23,\"minute\":55}}]," +
-                "\"id\":\"dbea21eb-57b5-44c9-a953-f61816fd5876\"}]}";
-		TestController.outputAsString("Json", "No Desc", json);
-		return "Test";
+		String json = getJson("xml");
+		return outputAsString("Json", "No Desc", json);
 	}
 
-	@GetMapping("/")
+	@GetMapping("/json")
 	public String testApi() throws IOException {
+		return getJson("xml");
+	}
 
-		int PRETTY_PRINT_INDENT_FACTOR = 4;
-		String TEST_XML_STRING = "<note>\r\n" + "<to>Tove</to>\r\n" + "<from>Jani</from>\r\n"
-				+ "<heading>Reminder</heading>\r\n" + "<body>Don't forget me this weekend!</body>\r\n" + "</note>";
+	private String getJson(String xml) {
+		String TEST_XML_STRING = xml;
 		String jsonPrettyPrintString = null;
 
 		try {
 			JSONObject xmlJSONObj = XML.toJSONObject(TEST_XML_STRING);
-			jsonPrettyPrintString = xmlJSONObj.toString(PRETTY_PRINT_INDENT_FACTOR);
+			jsonPrettyPrintString = xmlJSONObj.toString(4);
 			System.out.println(jsonPrettyPrintString);
 		} catch (JSONException je) {
 			System.out.println(je.toString());
@@ -54,20 +53,14 @@ public class TestController {
 		return jsonPrettyPrintString;
 	}
 
-	private static ObjectMapper objectMapper = new ObjectMapper();
-	private static Map<String, JsonNodeType> map = new HashMap<>();
 
-	public static String outputAsString(String title, String description, String json) throws IOException {
+	public String outputAsString(String title, String description, String json) throws IOException {
 		return cleanup(outputAsString(title, description, json, null));
 	}
 
-	public static void outputAsFile(String title, String description, String json, String filename) throws IOException {
-		FileUtils.writeStringToFile(new File(filename), cleanup(outputAsString(title, description, json)), "utf8");
-	}
-
-	public static void outputAsPOJO(String title, String description, String json, String packageName,
+	public void outputAsPOJO(String title, String description, String json, String packageName,
 			String outputDirectory) throws IOException {
-		String schema = TestController.outputAsString(title, title, json);
+		String schema = outputAsString(title, title, json);
 
 		File fDirectory = new File(outputDirectory);
 		if (!fDirectory.exists())
@@ -79,15 +72,11 @@ public class TestController {
 		codeModel.build(fDirectory);
 	}
 
-	private static String outputAsString(String title, String description, String json, JsonNodeType type)
+	private String outputAsString(String title, String description, String json, JsonNodeType type)
 			throws IOException {
 		JsonNode jsonNode = objectMapper.readTree(json);
 		StringBuilder output = new StringBuilder();
 		output.append("{");
-
-		if (type == null)
-			output.append("\"title\": \"" + title + "\", \"description\": \"" + description
-					+ "\", \"type\": \"object\", \"properties\": {");
 
 		for (Iterator<String> iterator = jsonNode.fieldNames(); iterator.hasNext();) {
 			String fieldName = iterator.next();
@@ -97,15 +86,12 @@ public class TestController {
 			output.append(convertNodeToStringSchemaNode(jsonNode, nodeType, fieldName));
 		}
 
-		if (type == null)
-			output.append("}");
-
 		output.append("}");
 
 		return output.toString();
 	}
 
-	private static String convertNodeToStringSchemaNode(JsonNode jsonNode, JsonNodeType nodeType, String key)
+	private String convertNodeToStringSchemaNode(JsonNode jsonNode, JsonNodeType nodeType, String key)
 			throws IOException {
 		StringBuilder result = new StringBuilder("\"" + key + "\": { \"type\": \"");
 
@@ -137,9 +123,7 @@ public class TestController {
 		return result.toString();
 	}
 
-	private static String cleanup(String dirty) {
-		JSONObject rawSchema = new JSONObject(new JSONTokener(dirty));
-		org.everit.json.schema.Schema schema = SchemaLoader.load(rawSchema);
-		return schema.toString();
+	private String cleanup(String dirty) {
+		return dirty.replace("},}", "}}");
 	}
 }
